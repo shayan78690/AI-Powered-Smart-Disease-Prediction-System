@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Prediction System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 Disease Prediction System</h1>
+            <p>Enter your symptoms to get a disease prediction</p>
+        </header>
+
+        <div class="main-content">
+            <form id="symptomForm" class="symptom-form">
+                <div class="form-section">
+                    <h2>Select Your Symptoms</h2>
+                    <div class="symptoms-grid">
+                        {% for i in range(1, 8) %}
+                        <div class="symptom-input">
+                            <label for="symptom_{{ i }}">Symptom {{ i }}:</label>
+                            <select name="symptom_{{ i }}" id="symptom_{{ i }}">
+                                <option value="">Select a symptom</option>
+                                {% for symptom in symptoms %}
+                                <option value="{{ symptom }}">{{ symptom.title() }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="more-symptoms" id="moreSymptoms" style="display: none;">
+                        <div class="symptoms-grid">
+                            {% for i in range(8, 18) %}
+                            <div class="symptom-input">
+                                <label for="symptom_{{ i }}">Symptom {{ i }}:</label>
+                                <select name="symptom_{{ i }}" id="symptom_{{ i }}">
+                                    <option value="">Select a symptom</option>
+                                    {% for symptom in symptoms %}
+                                    <option value="{{ symptom }}">{{ symptom.title() }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="toggleMore" class="toggle-btn">Show More Symptoms</button>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="predict-btn">🔍 Predict Disease</button>
+                    <button type="button" id="clearForm" class="clear-btn">🗑️ Clear Form</button>
+                </div>
+            </form>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Analyzing symptoms...</p>
+            </div>
+
+            <div id="results" class="results" style="display: none;">
+                <h2>🎯 Prediction Results</h2>
+                <div class="result-card">
+                    <div class="disease-info">
+                        <h3 id="diseaseName"></h3>
+                        <p class="confidence">Confidence: <span id="confidence"></span></p>
+                    </div>
+                    <div class="description">
+                        <h4>📋 Description:</h4>
+                        <p id="description"></p>
+                    </div>
+                    <div class="precautions">
+                        <h4>💡 Recommended Precautions:</h4>
+                        <ul id="precautionList"></ul>
+                    </div>
+                    <div class="disclaimer">
+                        <p><strong>⚠️ Disclaimer:</strong> This is an AI prediction for educational purposes only. Please consult a healthcare professional for proper medical diagnosis and treatment.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="error" class="error" style="display: none;">
+                <h3>❌ Error</h3>
+                <p id="errorMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle more symptoms
+        document.getElementById('toggleMore').addEventListener('click', function() {
+            const moreSymptoms = document.getElementById('moreSymptoms');
+            const toggleBtn = document.getElementById('toggleMore');
+            
+            if (moreSymptoms.style.display === 'none') {
+                moreSymptoms.style.display = 'block';
+                toggleBtn.textContent = 'Show Less Symptoms';
+            } else {
+                moreSymptoms.style.display = 'none';
+                toggleBtn.textContent = 'Show More Symptoms';
+            }
+        });
+
+        // Clear form
+        document.getElementById('clearForm').addEventListener('click', function() {
+            document.getElementById('symptomForm').reset();
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        });
+
+        // Form submission
+        document.getElementById('symptomForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const error = document.getElementById('error');
+            
+            // Hide previous results
+            results.style.display = 'none';
+            error.style.display = 'none';
+            loading.style.display = 'block';
+            
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.error) {
+                    document.getElementById('errorMessage').textContent = data.error;
+                    error.style.display = 'block';
+                } else {
+                    // Display results
+                    document.getElementById('diseaseName').textContent = data.disease;
+                    document.getElementById('confidence').textContent = data.confidence;
+                    document.getElementById('description').textContent = data.description;
+                    
+                    const precautionList = document.getElementById('precautionList');
+                    precautionList.innerHTML = '';
+                    data.precautions.forEach(precaution => {
+                        if (precaution && precaution !== 'nan') {
+                            const li = document.createElement('li');
+                            li.textContent = precaution;
+                            precautionList.appendChild(li);
+                        }
+                    });
+                    
+                    results.style.display = 'block';
+                }
+            })
+            .catch(err => {
+                loading.style.display = 'none';
+                document.getElementById('errorMessage').textContent = 'An error occurred while processing your request.';
+                error.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>
